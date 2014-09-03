@@ -1,5 +1,5 @@
 import sys
-import yapot
+from yapot import yapot
 
 print "Welcome to yapot!"
 
