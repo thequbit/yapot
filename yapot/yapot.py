@@ -2,7 +2,7 @@ from wand.image import Image as WandImage
 import subprocess
 import os
 
-def convert_document(pdf_filename, base_page_name, resolution=200, 
+def convert_document(pdf_filename, base_page_name='page', resolution=200, 
         delete_files = True, page_delineation='\n--------\n', 
         verbose=False):
 
