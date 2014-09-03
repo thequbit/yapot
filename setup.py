@@ -1,16 +1,23 @@
 #!/bin/env python
 # -*- coding: utf8 -*-
-from distribute_setup import use_setuptools
-use_setuptools()
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
-version = "0.0.1"
+long_description = \
+"""
+Yet Another PDF OCR Tool
+
+Makes converting PDF's to Text simple!
+
+"""
+
+version = "0.0.3"
 
 setup(
     name="yapot",
     version=version,
     description="Yet Another PDF OCR Tool",
+    long_description=long_description,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Natural Language :: English",
@@ -22,11 +29,12 @@ setup(
     author="Timothy Duffy",
     author_email="tim@timduffy.me",
     license="GPLv3+",
-    packages=find_packages(),
+    packages=['yapot'],
     include_package_data=True,
     zip_safe=False,
     install_requires=[
         "wand",
     ],
+    url="https://github.com/thequbit/yapot",
 )
 
