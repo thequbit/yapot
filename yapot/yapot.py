@@ -9,8 +9,8 @@ def convert_document(pdf_filename, base_page_name, resolution=200,
     success = False
     output_text = ''
 
-    try:
-    #if True:
+    #try:
+    if True:
 
         if verbose:
             print "Reading PDF ..."
@@ -45,22 +45,25 @@ def convert_document(pdf_filename, base_page_name, resolution=200,
 
         success = False
 
-    except Exception, e:
-        print "ERROR: {0}".format(e)
+    #except Exception, e:
+    #    print "ERROR: {0}".format(e)
 
     return success, output_text
 
 def _get_images_from_pdf(pdf_filename, resolution=200):
 
     ret_imgs = None
-    try:
+    #try:
+    if True:
+        print "Starting pdf read ..."
         imgs = WandImage(
             filename=pdf_filename,
             resolution=resolution
         )
+        print "Combining images ..."
         ret_imgs = zip(xrange(len(imgs.sequence)), imgs.sequence)
-    except:
-        pass
+    #except:
+    #    pass
 
     return ret_imgs
 
@@ -68,14 +71,15 @@ def _save_page_image(page_number, image, base_page_name='page'):
 
     success = False
     image_filename = ''
-    try:
+    #try:
+    if True:
         image_filename = '%s-%i.png' % (base_page_name, page_number)
         image.clone().save(
             filename=image_filename
         )
         success = True
-    except:
-        pass
+    #except:
+    #    pass
 
     return success, image_filename
 
@@ -101,11 +105,12 @@ def _convert_image_to_text(image_filename):
 def _delete_files(image_filename):
 
     success = False
-    try:
+    #try:
+    if True:
         os.remove(image_filename)
         os.remove('%s.txt' % image_filename)
         success = True
-    except:
-        pass
+    #except:
+    #    pass
 
     return success
