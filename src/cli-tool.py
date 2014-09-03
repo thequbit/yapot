@@ -1,16 +1,27 @@
 import sys
 import yapot
 
-pdf_filename = sys.argv[1]
-base_page_name = sys.argv[2]
+print "Welcome to yapot!"
 
-success, pdf_text = yapot.write_out_images(
-    pdf_filename = pdf_filename,
-    base_page_name = base_page_name,
-    resolution = 200,
-    delete_files = False,
-    page_delineation = '\n--------\n',
-    verbose = True,
-)
+if len(sys.argv) != 2:
 
-print pdf_text
+    print "Usage:\n\n\tpython cli-tool.py <pdf_filename>\n\n"
+
+else:
+
+    pdf_filename = sys.argv[1]
+    base_page_name = pdf_filename
+
+    success, pdf_text = yapot.convert_document(
+        pdf_filename = pdf_filename,
+        base_page_name = base_page_name,
+        resolution = 200,
+        delete_files = True,
+        page_delineation = '\n--------\n',
+        verbose = True,
+    )
+
+    with open('%s.txt' % pdf_filename, 'w') as f:
+        f.write(pdf_text)
+
+    print "Done."

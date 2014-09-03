@@ -1,8 +1,8 @@
 from wand.image import Image as WandImage
-from subprocess import call
+import subprocess
 import os
 
-def write_out_images(pdf_filename, base_page_name, resolution=200, 
+def convert_document(pdf_filename, base_page_name, resolution=200, 
         delete_files = True, page_delineation='\n--------\n', 
         verbose=False):
 
@@ -25,6 +25,7 @@ def write_out_images(pdf_filename, base_page_name, resolution=200,
             print "Converting PDF Images ..."
 
         # wand makes image sequences out of multi-page files
+        page_count = len(imgs)
         for i,im in imgs:
             success, image_filename = _save_page_image(i,im,base_page_name)
             if success == True:
@@ -40,7 +41,7 @@ def write_out_images(pdf_filename, base_page_name, resolution=200,
                 output_text = "{0}{1}{2}".format(output_text, page_text, page_delineation)
 
                 if verbose:
-                    print "Successfully converted page %i." % i
+                    print "Successfully converted page %i of %i." % (i,page_count)
 
         success = False
 
@@ -84,11 +85,11 @@ def _convert_image_to_text(image_filename):
     page_text = ''
     #try:
     if True:
+       FNULL = open(os.devnull, 'w')
+       
        text_filename = '%s.txt' % image_filename
-       # the second command line arg is image_filename, and not image_filename
-       # with .txt at the end is because tesseract places .txt on the end for us!
-       # we pipe tesseract's output to /dev/null so we don't get bothered by it
-       call(['tesseract',image_filename,image_filename],stdout=None)
+       subprocess.call(['tesseract',image_filename,image_filename], \
+           stdout=FNULL, stderr=subprocess.STDOUT)
        with open(text_filename,'r') as f:
            page_text = f.read()
        success = True
