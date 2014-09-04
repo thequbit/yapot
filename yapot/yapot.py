@@ -89,14 +89,14 @@ def _convert_image_to_text(image_filename):
     page_text = ''
     #try:
     if True:
-       FNULL = open(os.devnull, 'w')
+        FNULL = open(os.devnull, 'w')
 
-       text_filename = '%s.txt' % image_filename
-       subprocess.call(['tesseract',image_filename,image_filename], \
-           stdout=FNULL, stderr=subprocess.STDOUT)
-       with open(text_filename,'r') as f:
-           page_text = f.read()
-       success = True
+        text_filename = '%s.txt' % image_filename
+        subprocess.call(['tesseract', image_filename, image_filename],
+                        stdout=FNULL, stderr=subprocess.STDOUT)
+        with open(text_filename,'r') as f:
+            page_text = f.read()
+        success = True
     #except:
     #    pass
 
