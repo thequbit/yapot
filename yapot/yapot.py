@@ -2,8 +2,8 @@ from wand.image import Image as WandImage
 import subprocess
 import os
 
-def convert_document(pdf_filename, base_page_name='page', resolution=200, 
-        delete_files = True, page_delineation='\n--------\n', 
+def convert_document(pdf_filename, base_page_name='page', resolution=200,
+        delete_files = True, page_delineation='\n--------\n',
         verbose=False):
 
     success = False
@@ -84,13 +84,13 @@ def _save_page_image(page_number, image, base_page_name='page'):
     return success, image_filename
 
 def _convert_image_to_text(image_filename):
-    
+
     success = False
     page_text = ''
     #try:
     if True:
        FNULL = open(os.devnull, 'w')
-       
+
        text_filename = '%s.txt' % image_filename
        subprocess.call(['tesseract',image_filename,image_filename], \
            stdout=FNULL, stderr=subprocess.STDOUT)
