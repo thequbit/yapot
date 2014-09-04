@@ -1,3 +1,4 @@
+import os
 import sys
 from yapot import convert_document
 
@@ -8,7 +9,7 @@ def run():
 
     else:
         pdf_filename = sys.argv[1]
-        base_page_name = pdf_filename
+        base_page_name = os.path.expanduser(pdf_filename)
 
         success, pdf_text = convert_document(
             pdf_filename = pdf_filename,
