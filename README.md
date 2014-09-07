@@ -6,7 +6,13 @@ Yet Another PDF OCR Tool
 
 This is a library (tool) that makes PDF -> Text as easy as possble by doing a lot of the hard stuff for you!
 
+You will need ImageMagick and Tesseract to use yapot.
 
+    Ubuntu
+    ------
+    > sudo apt-get install imagemagick libmagickcore-dev
+    > sudo apt-get install tesseract-ocr
+        
 To use yapot, do the following:
 
     > pip install yapot
