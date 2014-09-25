@@ -16,7 +16,7 @@ def run():
             pdf_filename = pdf_filename,
             #base_page_name = base_page_name,
             resolution = 200,
-            delete_files = False, #True,
+            delete_files = True,
             page_delineation = '\n--------\n',
             verbose = True,
             #temp_dir = str(uuid.uuid4())
