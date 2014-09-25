@@ -19,7 +19,7 @@ __pdf_texts = Queue()
 
 def convert_document(pdf_filename, base_page_name='page', resolution=200,
         delete_files=True, page_delineation='\n--------\n',
-        verbose=False, temp_dir=str(uuid.uuid4())):
+        verbose=False, temp_dir=str(uuid.uuid4()),password=''):
 
     success = False
     output_text = ''
@@ -28,11 +28,27 @@ def convert_document(pdf_filename, base_page_name='page', resolution=200,
     #try:
 
         if verbose == True:
+            print "Sanitizing PDF ..."
+
+        with open(os.devnull, 'w') as FNULL:
+            subprocess.call(
+                [
+                    'qpdf',
+                    '--password={0}'.format(password),
+                    '--decrypt',
+                    pdf_filename,
+                    '{0}.unsecured.pdf'.format(pdf_filename),
+                ],
+                stdout=FNULL,
+                stderr=subprocess.STDOUT,
+            )
+
+        if verbose == True:
             print "Reading PDF ..."
 
         # get the images from the pdf
         page_count = _get_images_from_pdf(
-            pdf_filename = pdf_filename,
+            pdf_filename = '{0}.unsecured.pdf'.format(pdf_filename),
             resolution = resolution,
             base_page_name = base_page_name,
             verbose = verbose,
@@ -65,6 +81,7 @@ def convert_document(pdf_filename, base_page_name='page', resolution=200,
 
         if delete_files == True:
             shutil.rmtree(temp_dir)
+            os.remove('{0}.unsecured.pdf'.format(pdf_filename))
 
         success = True
 
