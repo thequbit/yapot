@@ -24,11 +24,15 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
     success = False
     output_text = ''
 
-    if True:
-    #try:
+    #if True:
+    try:
 
         if verbose == True:
             print "Sanitizing PDF ..."
+
+        pdf_filename_unsecured = '{0}.unsecured.pdf'.format(pdf_filename)
+        ps_filename = '{0}_no_fonts.ps'.format(pdf_filename_unsecured)
+        pdf_filename_no_fonts = "{0}.pdf".format(ps_filename[:-3])
 
         with open(os.devnull, 'w') as FNULL:
             subprocess.call(
@@ -37,18 +41,48 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
                     '--password={0}'.format(password),
                     '--decrypt',
                     pdf_filename,
-                    '{0}.unsecured.pdf'.format(pdf_filename),
+                    pdf_filename_unsecured,
                 ],
                 stdout=FNULL,
                 stderr=subprocess.STDOUT,
             )
+
+        #with open(os.devnull, 'w') as FNULL:
+        #    subprocess.call(
+        #        [
+        #            'pdf2ps',
+        #            '-dNoOutputFonts',
+        #            pdf_filename_unsecured,
+        #            ps_filename,
+        #        ],
+        #        stdout=FNULL,
+        #        stderr=subprocess.STDOUT,
+        #    )
+
+        #with open(os.devnull, 'w') as FNULL:
+        #    subprocess.call(
+        #        [
+        #            'ps2pdf',
+        #            '-dEmbedAllFonts=false',
+        #            #'-dPDFSETTINGS=/prepress',
+        #            '-dPDFSETTINGS=/ebook',
+        #            '-dNoOutputFonts',
+        #            #'-c ".setpdfwrite <</NeverEmbed [/TimesNewRomanPS-BoldMT]>> setdistillerparams"',
+        #            '-dCompatibilityLevel=1.4',
+        #            '-dSubsetFonts=false',
+        #            ps_filename,
+        #            pdf_filename_no_fonts,
+        #        ],
+        #        stdout=FNULL,
+        #        stderr=subprocess.STDOUT,
+        #    )
 
         if verbose == True:
             print "Reading PDF ..."
 
         # get the images from the pdf
         page_count = _get_images_from_pdf(
-            pdf_filename = '{0}.unsecured.pdf'.format(pdf_filename),
+            pdf_filename = pdf_filename_unsecured, #pdf_filename_no_fonts,#'{0}.unsecured.pdf'.format(pdf_filename),
             resolution = resolution,
             verbose = verbose,
             temp_dir = temp_dir,
@@ -80,20 +114,22 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
 
         if delete_files == True:
             shutil.rmtree(temp_dir)
-            os.remove('{0}.unsecured.pdf'.format(pdf_filename))
+            os.remove(pdf_filename_unsecured)
+            os.remove(ps_filename)
+            os.remove(pdf_filename_no_fonts)
 
-    #except Exception, e:
-    #    if verbose == True:
-    #        print "ERROR: {0}".format(e)
-    #    success = False
+    except Exception, e:
+        if verbose == True:
+            print "ERROR: {0}".format(e)
+        success = False
 
     return success, output_text
 
 def _get_images_from_pdf(pdf_filename, resolution=200, 
         verbose=False, delete_files=True, temp_dir=str(uuid.uuid4())):
 
-    if True:
-    #try:
+    #if True:
+    try:
 
         if verbose == True:
             print "Splitting PDF into multiple pdf's for processing ..."
@@ -107,6 +143,10 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
         if inputpdf.getIsEncrypted():
             inputpdf.decrypt('')
 
+        _pages = list(inputpdf.pages)
+        #print inputpdf.resolvedObjects
+        #inputpdf.set_font('Times')
+
         if verbose == True:
             print "Writing out %i pages ..." % inputpdf.numPages
 
@@ -114,6 +154,7 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
         for i in xrange(inputpdf.numPages):
             output = PdfFileWriter()
             output.addPage(inputpdf.getPage(i))
+            #print output.resolvedObjects
             filename = "{0}/document-page-{1}.pdf".format(temp_dir,i)
             with open(filename, "wb") as outputStream:
                 output.write(outputStream)
@@ -123,7 +164,7 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
             print "Dispatching pdf workers ..."
 
         # spin up our workers to convert the pdfs to images
-        pool_count = 8
+        pool_count = 4
         pool = Pool()
         result = pool.map_async(
             _pdf_converter_worker, 
@@ -131,15 +172,17 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
                     x in range(pool_count)]
         )
 
-        while not __pdf_queue.empty():
+        while __pdf_texts.qsize() != inputpdf.numPages:
             time.sleep(.25)
 
-        print "Done converting PDF."
+        if verbose == True:
+            print "Done converting PDF."
 
         success = True
 
-    #except:
-    #    pass
+    except Exception, e:
+        print str(e)
+        pass
 
     return inputpdf.numPages
 
@@ -156,7 +199,8 @@ def _pdf_converter_worker(args):
 
         while(1):
 
-            #print "{0}: Getting page from queue ...".format(thread_number)
+            if verbose == True:
+                print "{0}: Getting page from queue ...".format(thread_number)
 
             page_number = __pdf_queue.get_nowait()
 
@@ -167,9 +211,9 @@ def _pdf_converter_worker(args):
 
             imgs = WandImage(
                 filename=pdf_filename,
-                resolution=resolution
+                resolution=int(resolution),
             )
-            
+
             if verbose == True:
                 print "{0}: done with page {1}".format(thread_number, page_number)
 
@@ -181,17 +225,8 @@ def _pdf_converter_worker(args):
             _i, _im = ret_imgs[0]
             success, image_filename = _save_page_image(pdf_filename, _im)
 
-            print "Image Data: "
-            print _im
-
-            #print "{0}: saving image {1} filename to list ...".format(thread_number, page_number)
-
-            #__pdf_images.put((int(page_number), image_filename))
-
             if verbose == True:
                 print "{0}: done.".format(thread_number)
-
-            #__pdf_queue.task_done()
 
             if verbose == True:
                 print "{0}: Converting image to text ...".format(thread_number)
@@ -200,14 +235,10 @@ def _pdf_converter_worker(args):
 
             __pdf_texts.put((int(page_number),page_text))
 
-            if delete_files == True:
-                if verbose == True:
-                    print "{0}: Deleting temp files ..."
-                success = _delete_files(image_filename)
-
     except Exception, e:
-        print "Error!"
-        print str(e)
+    #    print "{0}: An error has occured:".format(thread_number)
+    #    print "{0}: ERROR: {1}".format(thread_number,str(e))
+        pass
 
     if verbose == True:
         print "{0}: Thread exiting.".format(thread_number)
@@ -220,8 +251,8 @@ def _save_page_image(pdf_filename, image):
 
     success = False
     image_filename = ''
-    if True:
-    #try:
+    #if True:
+    try:
 
         image_filename = '{0}.png'.format(pdf_filename)
         image.clone().save(
@@ -230,8 +261,8 @@ def _save_page_image(pdf_filename, image):
 
         success = True
 
-    #except:
-    #    pass
+    except:
+        pass
 
     return success, image_filename
 
@@ -242,8 +273,8 @@ def _convert_image_to_text(image_filename, verbose=False):
 
     success = False
     page_text = ''
-    if True:
-    #try:
+    #if True:
+    try:
 
         FNULL = open(os.devnull, 'w')
 
@@ -256,23 +287,11 @@ def _convert_image_to_text(image_filename, verbose=False):
 
         success = True
 
-    #except:
-    #    pass
+    except:
+        pass
 
     if verbose == True:
         print "Done with image OCR."
 
     return success, page_text
 
-def _delete_files(image_filename):
-
-    success = False
-    if True:
-    #try:
-        os.remove(image_filename)
-        os.remove('%s.txt' % image_filename)
-        success = True
-    #except:
-    #    pass
-
-    return success
