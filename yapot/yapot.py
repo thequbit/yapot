@@ -17,9 +17,9 @@ __pdf_queue = Queue()
 __pdf_images = Queue()
 __pdf_texts = Queue()
 
-def convert_document(pdf_filename, base_page_name='page', resolution=200,
-        delete_files=True, page_delineation='\n--------\n',
-        verbose=False, temp_dir=str(uuid.uuid4()),password=''):
+def convert_document(pdf_filename, resolution=200, delete_files=True,
+        page_delineation='\n--------\n', verbose=False, 
+        temp_dir=str(uuid.uuid4()),password=''):
 
     success = False
     output_text = ''
@@ -50,7 +50,6 @@ def convert_document(pdf_filename, base_page_name='page', resolution=200,
         page_count = _get_images_from_pdf(
             pdf_filename = '{0}.unsecured.pdf'.format(pdf_filename),
             resolution = resolution,
-            base_page_name = base_page_name,
             verbose = verbose,
             temp_dir = temp_dir,
         )
@@ -83,8 +82,6 @@ def convert_document(pdf_filename, base_page_name='page', resolution=200,
             shutil.rmtree(temp_dir)
             os.remove('{0}.unsecured.pdf'.format(pdf_filename))
 
-        success = True
-
     #except Exception, e:
     #    if verbose == True:
     #        print "ERROR: {0}".format(e)
@@ -93,8 +90,7 @@ def convert_document(pdf_filename, base_page_name='page', resolution=200,
     return success, output_text
 
 def _get_images_from_pdf(pdf_filename, resolution=200, 
-        base_page_name='page', verbose=False, 
-        delete_files=True, temp_dir=str(uuid.uuid4())):
+        verbose=False, delete_files=True, temp_dir=str(uuid.uuid4())):
 
     if True:
     #try:
@@ -138,7 +134,9 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
         while not __pdf_queue.empty():
             time.sleep(.25)
 
-        print "Done conerting PDF."
+        print "Done converting PDF."
+
+        success = True
 
     #except:
     #    pass
@@ -153,8 +151,8 @@ def _pdf_converter_worker(args):
     delete_files = args[3]
     temp_dir = args[4]
 
-    if True:
-    #try:
+    #if True:
+    try:
 
         while(1):
 
@@ -183,6 +181,9 @@ def _pdf_converter_worker(args):
             _i, _im = ret_imgs[0]
             success, image_filename = _save_page_image(pdf_filename, _im)
 
+            print "Image Data: "
+            print _im
+
             #print "{0}: saving image {1} filename to list ...".format(thread_number, page_number)
 
             #__pdf_images.put((int(page_number), image_filename))
@@ -204,9 +205,9 @@ def _pdf_converter_worker(args):
                     print "{0}: Deleting temp files ..."
                 success = _delete_files(image_filename)
 
-    #except Exception, e:
-    ##    pass
-    #    print str(e)
+    except Exception, e:
+        print "Error!"
+        print str(e)
 
     if verbose == True:
         print "{0}: Thread exiting.".format(thread_number)
@@ -219,7 +220,8 @@ def _save_page_image(pdf_filename, image):
 
     success = False
     image_filename = ''
-    try:
+    if True:
+    #try:
 
         image_filename = '{0}.png'.format(pdf_filename)
         image.clone().save(
@@ -228,8 +230,8 @@ def _save_page_image(pdf_filename, image):
 
         success = True
 
-    except:
-        pass
+    #except:
+    #    pass
 
     return success, image_filename
 
@@ -240,7 +242,8 @@ def _convert_image_to_text(image_filename, verbose=False):
 
     success = False
     page_text = ''
-    try:
+    if True:
+    #try:
 
         FNULL = open(os.devnull, 'w')
 
@@ -253,8 +256,8 @@ def _convert_image_to_text(image_filename, verbose=False):
 
         success = True
 
-    except:
-        pass
+    #except:
+    #    pass
 
     if verbose == True:
         print "Done with image OCR."
@@ -264,11 +267,12 @@ def _convert_image_to_text(image_filename, verbose=False):
 def _delete_files(image_filename):
 
     success = False
-    try:
+    if True:
+    #try:
         os.remove(image_filename)
         os.remove('%s.txt' % image_filename)
         success = True
-    except:
-        pass
+    #except:
+    #    pass
 
     return success
