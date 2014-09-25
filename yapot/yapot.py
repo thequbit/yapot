@@ -98,7 +98,7 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
             print "Writing out %i pages ..." % inputpdf.numPages
 
         # create all of the temporary pdfs
-        for i in xrange(16): #xrange(inputpdf.numPages):
+        for i in xrange(inputpdf.numPages):
             output = PdfFileWriter()
             output.addPage(inputpdf.getPage(i))
             filename = "{0}/document-page-{1}.pdf".format(temp_dir,i)
