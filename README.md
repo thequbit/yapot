@@ -36,10 +36,15 @@ Some more advanced things you can do are set the resolution, page delineation, a
 
     success, pdf_text = yapot.convert_document(
         pdf_filename = pdf_filename,       # The name of the pdf file
-        resolution = 200,                  # Image DPI resolution (default 200)
-        delete_files = True,               # delete temporary files (default True)
-        page_delineation = '\n--------\n', # page deination text (default '\n--------\n')
-        verbose = False,                   # output verbosity (default False)
-        temp_dir = str(uuid.uuid4()),      # location of temp directory to use (default local unique directory)
+        resolution = 200,                  # Image DPI resolution
+        delete_files = True,               # delete temporary files
+        page_delineation = '\n--------\n', # page deination text
+        verbose = False,                   # output verbosity
+        temp_dir = str(uuid.uuid4()),      # location of temp directory to use
+        password = '',                     # password for PDF file
+        make_thumbs = True,                # create thrumbnails for each page
+        thumb_size = 512,                  # width of thumbnail image
+        thumb_dir = './thumbs',            # directory to place thumbnails
+        thumb_prefix = 'thumb_page_',      # prefix for thumbnail images
     )
 
