@@ -12,14 +12,19 @@ def run():
         pdf_filename = sys.argv[1]
         #base_page_name = os.path.expanduser(pdf_filename)
 
+        temp_dir =  str(uuid.uuid4())
+
         success, pdf_text = convert_document(
             pdf_filename = pdf_filename,
             #base_page_name = base_page_name,
             resolution = 200,
-            delete_files = True,
+            delete_files = False,
             page_delineation = '\n--------\n',
             verbose = True,
-            #temp_dir = str(uuid.uuid4())
+            temp_dir = temp_dir,
+            make_thumbs = True,
+            thumb_size = 512,
+            thumb_dir = '{0}/thumbs'.format(temp_dir),
         )
 
         with open('%s.txt' % pdf_filename, 'w') as f:

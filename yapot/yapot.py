@@ -19,7 +19,8 @@ __pdf_texts = Queue()
 
 def convert_document(pdf_filename, resolution=200, delete_files=True,
         page_delineation='\n--------\n', verbose=False, 
-        temp_dir=str(uuid.uuid4()),password=''):
+        temp_dir=str(uuid.uuid4()),password='',make_thumbs=False,
+        thumb_size=160, thumb_dir='thumbs', thumb_prefix='thumb_page_'):
 
     success = False
     output_text = ''
@@ -47,36 +48,6 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
                 stderr=subprocess.STDOUT,
             )
 
-        #with open(os.devnull, 'w') as FNULL:
-        #    subprocess.call(
-        #        [
-        #            'pdf2ps',
-        #            '-dNoOutputFonts',
-        #            pdf_filename_unsecured,
-        #            ps_filename,
-        #        ],
-        #        stdout=FNULL,
-        #        stderr=subprocess.STDOUT,
-        #    )
-
-        #with open(os.devnull, 'w') as FNULL:
-        #    subprocess.call(
-        #        [
-        #            'ps2pdf',
-        #            '-dEmbedAllFonts=false',
-        #            #'-dPDFSETTINGS=/prepress',
-        #            '-dPDFSETTINGS=/ebook',
-        #            '-dNoOutputFonts',
-        #            #'-c ".setpdfwrite <</NeverEmbed [/TimesNewRomanPS-BoldMT]>> setdistillerparams"',
-        #            '-dCompatibilityLevel=1.4',
-        #            '-dSubsetFonts=false',
-        #            ps_filename,
-        #            pdf_filename_no_fonts,
-        #        ],
-        #        stdout=FNULL,
-        #        stderr=subprocess.STDOUT,
-        #    )
-
         if verbose == True:
             print "Reading PDF ..."
 
@@ -85,7 +56,12 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
             pdf_filename = pdf_filename_unsecured, #pdf_filename_no_fonts,#'{0}.unsecured.pdf'.format(pdf_filename),
             resolution = resolution,
             verbose = verbose,
+            delete_files = delete_files,
             temp_dir = temp_dir,
+            make_thumbs = make_thumbs,
+            thumb_size = thumb_size,
+            thumb_dir = thumb_dir,
+            thumb_prefix = thumb_prefix,
         )
 
         if verbose == True:
@@ -125,8 +101,8 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
 
     return success, output_text
 
-def _get_images_from_pdf(pdf_filename, resolution=200, 
-        verbose=False, delete_files=True, temp_dir=str(uuid.uuid4())):
+def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
+        temp_dir, make_thumbs, thumb_size, thumb_dir, thumb_prefix):
 
     #if True:
     try:
@@ -137,6 +113,11 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
         # make sure there is a place to put our temporary pdfs
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
+
+        # make sure if we are going to make thumbs, the folde rexists
+        if make_thumbs == True:
+            if not os.path.exists(thumb_dir):
+                os.makedirs(thumb_dir)
 
         # read input pdf
         inputpdf = PdfFileReader(open(pdf_filename, "rb"))
@@ -168,8 +149,10 @@ def _get_images_from_pdf(pdf_filename, resolution=200,
         pool = Pool()
         result = pool.map_async(
             _pdf_converter_worker, 
-            [(x, resolution, verbose, delete_files, temp_dir) for \
-                    x in range(pool_count)]
+            [(x, resolution, verbose, delete_files, 
+                temp_dir, make_thumbs, thumb_size,
+                thumb_dir, thumb_prefix) for \
+                x in range(pool_count)]
         )
 
         while __pdf_texts.qsize() != inputpdf.numPages:
@@ -193,6 +176,10 @@ def _pdf_converter_worker(args):
     verbose = args[2]
     delete_files = args[3]
     temp_dir = args[4]
+    make_thumbs = args[5]
+    thumb_size = args[6]
+    thumb_dir = args[7]
+    thumb_prefix = args[8]
 
     #if True:
     try:
@@ -205,6 +192,7 @@ def _pdf_converter_worker(args):
             page_number = __pdf_queue.get_nowait()
 
             pdf_filename = "{0}/document-page-{1}.pdf".format(temp_dir, page_number)
+            thumb_filename = "{0}/{1}{2}.png".format(thumb_dir, thumb_prefix, page_number)
 
             if verbose == True:
                 print "{0}: working on page {1}".format(thread_number, page_number)
@@ -223,7 +211,14 @@ def _pdf_converter_worker(args):
                 print "{0}: saving image data ...".format(thread_number)
 
             _i, _im = ret_imgs[0]
-            success, image_filename = _save_page_image(pdf_filename, _im)
+            success, image_filename = _save_page_image(
+                pdf_filename = pdf_filename,
+                image = _im,
+                thumb_filename = thumb_filename,
+                make_thumb = make_thumbs,
+                thumb_size = thumb_size,
+                verbose = verbose,
+            )
 
             if verbose == True:
                 print "{0}: done.".format(thread_number)
@@ -247,22 +242,42 @@ def _pdf_converter_worker(args):
 
     
 
-def _save_page_image(pdf_filename, image):
+def _save_page_image(pdf_filename, image, thumb_filename, 
+        make_thumb, thumb_size, verbose=False):
 
     success = False
     image_filename = ''
-    #if True:
-    try:
+    if True:
+    #try:
 
         image_filename = '{0}.png'.format(pdf_filename)
         image.clone().save(
             filename=image_filename
         )
 
+        if make_thumb == True:
+
+            if verbose == True:
+                print "Making thumb nail image: '{0}' ...".format(thumb_filename)
+
+            FNULL = open(os.devnull, 'w')
+            cli_call = [
+                'convert',
+                '-resize',
+                '{0}x{0}'.format(thumb_size),
+                image_filename,
+                thumb_filename,
+            ]
+            subprocess.call(
+                cli_call, 
+                stdout=FNULL,
+                stderr=subprocess.STDOUT
+            )
+
         success = True
 
-    except:
-        pass
+    #except:
+    #    pass
 
     return success, image_filename
 
