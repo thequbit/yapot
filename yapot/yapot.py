@@ -294,8 +294,18 @@ def _convert_image_to_text(image_filename, verbose=False):
         FNULL = open(os.devnull, 'w')
 
         text_filename = '%s.txt' % image_filename
-        subprocess.call(['tesseract', image_filename, image_filename],
-                        stdout=FNULL, stderr=subprocess.STDOUT)
+        cli_call = [
+            'tesseract',
+            image_filename,
+            image_filename,
+            '-psm',
+            '6',
+        ]
+        subprocess.call(
+            cli_call,
+            stdout=FNULL,
+            stderr=subprocess.STDOUT
+        )
 
         with open(text_filename,'r') as f:
             page_text = f.read()
