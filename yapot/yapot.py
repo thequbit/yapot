@@ -91,8 +91,10 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
         if delete_files == True:
             shutil.rmtree(temp_dir)
             os.remove(pdf_filename_unsecured)
-            os.remove(ps_filename)
-            os.remove(pdf_filename_no_fonts)
+            #os.remove(ps_filename)
+            #os.remove(pdf_filename_no_fonts)
+
+        success = True
 
     except Exception, e:
         if verbose == True:
