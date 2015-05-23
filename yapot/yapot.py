@@ -1,4 +1,5 @@
 from wand.image import Image as WandImage
+from wand.color import Color as Color
 
 import subprocess
 import os
@@ -219,6 +220,7 @@ def _pdf_converter_worker(args):
                 thumb_filename = thumb_filename,
                 make_thumb = make_thumbs,
                 thumb_size = thumb_size,
+                thread_number = thread_number,
                 verbose = verbose,
             )
 
@@ -245,22 +247,36 @@ def _pdf_converter_worker(args):
     
 
 def _save_page_image(pdf_filename, image, thumb_filename, 
-        make_thumb, thumb_size, verbose=False):
+        make_thumb, thumb_size, thread_number, verbose=False):
 
     success = False
     image_filename = ''
     if True:
     #try:
 
-        image_filename = '{0}.png'.format(pdf_filename)
-        image.clone().save(
-            filename=image_filename
-        )
+        if verbose == True:
+            print "{0}: Saving off PDF image ...".format(thread_number)
+
+        try:
+          image_filename = '{0}.tiff'.format(pdf_filename)
+          bg = WandImage(width=image.width, height=image.height, background=Color("white"))
+          bg.composite(image, 0, 0)
+          bg.clone().save(
+            filename = image_filename,
+          )
+        except Exception, ex:
+          print ex
+        #image.clone().save(
+        #    filename=image_filename
+        #)
+
+        if verbose == True:
+            print "{0}: Done saving off PDF image.".format(thread_number)
 
         if make_thumb == True:
 
             if verbose == True:
-                print "Making thumb nail image: '{0}' ...".format(thumb_filename)
+                print "{0}: Making thumb nail image: '{1}' ...".format(thread_number, thumb_filename)
 
             FNULL = open(os.devnull, 'w')
             cli_call = [
