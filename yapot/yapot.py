@@ -21,7 +21,8 @@ __pdf_texts = Queue()
 def convert_document(pdf_filename, resolution=200, delete_files=True,
         page_delineation='\n--------\n', verbose=False, 
         temp_dir=str(uuid.uuid4()),password='',make_thumbs=False,
-        thumb_size=160, thumb_dir='thumbs', thumb_prefix='thumb_page_'):
+        thumb_size=160, thumb_dir='thumbs', thumb_prefix='thumb_page_',
+        pool_count=1):
 
     success = False
     output_text = ''
@@ -63,6 +64,7 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
             thumb_size = thumb_size,
             thumb_dir = thumb_dir,
             thumb_prefix = thumb_prefix,
+            pool_count = pool_count,
         )
 
         if verbose == True:
@@ -105,7 +107,7 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
     return success, output_text
 
 def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
-        temp_dir, make_thumbs, thumb_size, thumb_dir, thumb_prefix):
+        temp_dir, make_thumbs, thumb_size, thumb_dir, thumb_prefix, pool_count=1):
 
     #if True:
     try:
@@ -148,7 +150,7 @@ def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
             print "Dispatching pdf workers ..."
 
         # spin up our workers to convert the pdfs to images
-        pool_count = 4
+        #pool_count = 4
         pool = Pool()
         result = pool.map_async(
             _pdf_converter_worker, 
