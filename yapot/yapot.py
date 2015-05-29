@@ -3,6 +3,8 @@ from wand.color import Color as Color
 
 import subprocess
 import os
+import traceback
+
 from multiprocessing import Queue
 from multiprocessing import Pool
 
@@ -14,15 +16,38 @@ import shutil
 from pyPdf import PdfFileWriter
 from pyPdf import PdfFileReader
 
+
+# Queues!
+# You have a single PDF file that gets split into multiple PDFs.  Each PDF is
+# one page.  Each of those get converted to images, and each of those images
+# get converted to blobs of text.  These queues help manage that workflow.
 __pdf_queue = Queue()
 __pdf_images = Queue()
 __pdf_texts = Queue()
 
+
 def convert_document(pdf_filename, resolution=200, delete_files=True,
-        page_delineation='\n--------\n', verbose=False, 
+        page_delineation='\n--------\n', verbose=False,
         temp_dir=str(uuid.uuid4()),password='',make_thumbs=False,
         thumb_size=160, thumb_dir='thumbs', thumb_prefix='thumb_page_',
         pool_count=1):
+    """ This is the entry-point for the application.
+
+    Here's some info on some of the arguments.
+
+    - temp_dir is a string for where to store the tempfiles of all these
+      shell-out operations.  You don't necessarily want to use /var/tmp because
+      you might run out of memory with all these huge files.
+    - make_thumbs is a boolean and will generate small thumbnail images of each
+      page of the pdf (nice!).
+    - resolution is an int and it is the DPI resolution of the image that is
+      created from the PDF before it is passed into tesseract.  I highly
+      recommend this be 200 or greater.  Anything over 400 is going to take an
+      extremely long time, with diminishing returns.
+    - thumb_size is only the *width* of the thumbnails, the aspect ratio of the
+      original document is maintained.
+    - pool_count is the number of threads to use.
+    """
 
     success = False
     output_text = ''
@@ -34,8 +59,6 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
             print "Sanitizing PDF ..."
 
         pdf_filename_unsecured = '{0}.unsecured.pdf'.format(pdf_filename)
-        ps_filename = '{0}_no_fonts.ps'.format(pdf_filename_unsecured)
-        pdf_filename_no_fonts = "{0}.pdf".format(ps_filename[:-3])
 
         with open(os.devnull, 'w') as FNULL:
             subprocess.call(
@@ -54,7 +77,7 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
             print "Reading PDF ..."
 
         # get the images from the pdf
-        page_count = _get_images_from_pdf(
+        page_count, _ = _get_images_from_pdf(
             pdf_filename = pdf_filename_unsecured, #pdf_filename_no_fonts,#'{0}.unsecured.pdf'.format(pdf_filename),
             resolution = resolution,
             verbose = verbose,
@@ -94,14 +117,12 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
         if delete_files == True:
             shutil.rmtree(temp_dir)
             os.remove(pdf_filename_unsecured)
-            #os.remove(ps_filename)
-            #os.remove(pdf_filename_no_fonts)
 
         success = True
 
-    except Exception, e:
+    except Exception:
         if verbose == True:
-            print "ERROR: {0}".format(e)
+            traceback.print_exc()
         success = False
 
     return success, output_text
@@ -109,7 +130,7 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
 def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
         temp_dir, make_thumbs, thumb_size, thumb_dir, thumb_prefix, pool_count=1):
 
-    #if True:
+    success = False
     try:
 
         if verbose == True:
@@ -128,10 +149,6 @@ def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
         inputpdf = PdfFileReader(open(pdf_filename, "rb"))
         if inputpdf.getIsEncrypted():
             inputpdf.decrypt('')
-
-        _pages = list(inputpdf.pages)
-        #print inputpdf.resolvedObjects
-        #inputpdf.set_font('Times')
 
         if verbose == True:
             print "Writing out %i pages ..." % inputpdf.numPages
@@ -152,9 +169,9 @@ def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
         # spin up our workers to convert the pdfs to images
         #pool_count = 4
         pool = Pool()
-        result = pool.map_async(
-            _pdf_converter_worker, 
-            [(x, resolution, verbose, delete_files, 
+        pool.map_async(
+            _pdf_converter_worker,
+            [(x, resolution, verbose, delete_files,
                 temp_dir, make_thumbs, thumb_size,
                 thumb_dir, thumb_prefix) for \
                 x in range(pool_count)]
@@ -170,16 +187,15 @@ def _get_images_from_pdf(pdf_filename, resolution, verbose, delete_files,
 
     except Exception, e:
         print str(e)
-        pass
 
-    return inputpdf.numPages
+    return inputpdf.numPages, success
 
 def _pdf_converter_worker(args):
 
     thread_number = args[0]
     resolution = args[1]
     verbose = args[2]
-    delete_files = args[3]
+    #delete_files = args[3] # never used here...
     temp_dir = args[4]
     make_thumbs = args[5]
     thumb_size = args[6]
@@ -193,6 +209,10 @@ def _pdf_converter_worker(args):
 
             if verbose == True:
                 print "{0}: Getting page from queue ...".format(thread_number)
+
+            if not __pdf_queue.qsize():
+                print "{0}: All out of work.".format(thread_number)
+                break
 
             page_number = __pdf_queue.get_nowait()
 
@@ -236,19 +256,19 @@ def _pdf_converter_worker(args):
 
             __pdf_texts.put((int(page_number),page_text))
 
-    except Exception, e:
-    #    print "{0}: An error has occured:".format(thread_number)
-    #    print "{0}: ERROR: {1}".format(thread_number,str(e))
-        pass
+    except Exception as e:
+        print "{0}: An error has occured:".format(thread_number)
+        print "{0}: ERROR: {1}".format(thread_number,str(e))
+        traceback.print_exc()
 
     if verbose == True:
         print "{0}: Thread exiting.".format(thread_number)
 
-    return 
+    return
 
-    
 
-def _save_page_image(pdf_filename, image, thumb_filename, 
+
+def _save_page_image(pdf_filename, image, thumb_filename,
         make_thumb, thumb_size, thread_number, verbose=False):
 
     success = False
@@ -289,7 +309,7 @@ def _save_page_image(pdf_filename, image, thumb_filename,
                 thumb_filename,
             ]
             subprocess.call(
-                cli_call, 
+                cli_call,
                 stdout=FNULL,
                 stderr=subprocess.STDOUT
             )
