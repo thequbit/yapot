@@ -116,7 +116,8 @@ def convert_document(pdf_filename, resolution=200, delete_files=True,
 
         if delete_files == True:
             shutil.rmtree(temp_dir)
-            os.remove(pdf_filename_unsecured)
+        
+        os.remove(pdf_filename_unsecured)
 
         success = True
 
@@ -202,8 +203,8 @@ def _pdf_converter_worker(args):
     thumb_dir = args[7]
     thumb_prefix = args[8]
 
-    #if True:
-    try:
+    if True:
+    #try:
 
         while(1):
 
@@ -222,29 +223,54 @@ def _pdf_converter_worker(args):
             if verbose == True:
                 print "{0}: working on page {1}".format(thread_number, page_number)
 
-            imgs = WandImage(
-                filename=pdf_filename,
-                resolution=int(resolution),
+            #imgs = WandImage(
+            #    filename=pdf_filename,
+            #    resolution=int(resolution),
+            #)
+
+            image_filename = '{0}.tiff'.format(pdf_filename)
+
+            FNULL = open(os.devnull, 'w')
+            cli_call = [
+                'gs',
+                '-q',
+                '-dQUIET',
+                '-dSAFER',
+                '-dBATCH',
+                '-dNOPAUSE',
+                '-dNOPROMPT',
+                '-sDEVICE=tiffg4',
+                '-r200x200',
+                '-sOutputFile={0}'.format(image_filename),
+                pdf_filename,
+            ]
+
+            print '{0}: {1}'.format(thread_number, ' '.join(cli_call))
+
+            subprocess.call(
+                cli_call,
+                stdout=FNULL,
+                stderr=subprocess.STDOUT
             )
 
             if verbose == True:
                 print "{0}: done with page {1}".format(thread_number, page_number)
 
-            ret_imgs = zip(xrange(len(imgs.sequence)), imgs.sequence)
+            #ret_imgs = zip(xrange(len(imgs.sequence)), imgs.sequence)
 
-            if verbose == True:
-                print "{0}: saving image data ...".format(thread_number)
+            #if verbose == True:
+            #    print "{0}: saving image data ...".format(thread_number)
 
-            _i, _im = ret_imgs[0]
-            success, image_filename = _save_page_image(
-                pdf_filename = pdf_filename,
-                image = _im,
-                thumb_filename = thumb_filename,
-                make_thumb = make_thumbs,
-                thumb_size = thumb_size,
-                thread_number = thread_number,
-                verbose = verbose,
-            )
+            #_i, _im = ret_imgs[0]
+            #success, image_filename = _save_page_image(
+            #    pdf_filename = pdf_filename,
+            #    image = _im,
+            #    thumb_filename = thumb_filename,
+            #    make_thumb = make_thumbs,
+            #    thumb_size = thumb_size,
+            #    thread_number = thread_number,
+            #    verbose = verbose,
+            #)
 
             if verbose == True:
                 print "{0}: done.".format(thread_number)
@@ -256,10 +282,10 @@ def _pdf_converter_worker(args):
 
             __pdf_texts.put((int(page_number),page_text))
 
-    except Exception as e:
-        print "{0}: An error has occured:".format(thread_number)
-        print "{0}: ERROR: {1}".format(thread_number,str(e))
-        traceback.print_exc()
+    #except Exception as e:
+    #    print "{0}: An error has occured:".format(thread_number)
+    #    print "{0}: ERROR: {1}".format(thread_number,str(e))
+    #    traceback.print_exc()
 
     if verbose == True:
         print "{0}: Thread exiting.".format(thread_number)
