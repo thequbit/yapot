@@ -1,7 +1,7 @@
 import os
 import sys
 import uuid
-from yapot import convert_document
+from yapot2 import convert_document
 
 def run():
     print "Welcome to yapot!"
@@ -14,17 +14,18 @@ def run():
 
         temp_dir =  str(uuid.uuid4())
 
-        success, pdf_text = convert_document(
+        pdf_text = convert_document(
             pdf_filename = pdf_filename,
             #base_page_name = base_page_name,
-            resolution = 200,
-            delete_files = False,
+            resolution = 300,
+            delete_files = True,
             page_delineation = '\n--------\n',
             verbose = True,
             temp_dir = temp_dir,
             make_thumbs = True,
             thumb_size = 512,
             thumb_dir = '{0}/thumbs'.format(temp_dir),
+            pool_count = 8,
         )
 
         with open('%s.txt' % pdf_filename, 'w') as f:
