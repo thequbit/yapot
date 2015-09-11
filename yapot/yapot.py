@@ -30,7 +30,7 @@ def convert_document(pdf_filename,
                      thumb_prefix='thumb_page_',
                      pool_count=1):
 
-    print "M: Start."
+    #print "M: Start."
 
     filename = decrypt_pdf(pdf_filename, password)
     
@@ -39,8 +39,8 @@ def convert_document(pdf_filename,
     for filename in filenames:
         __pdf_filenames.put(filename)
 
-    print "M: Spinning up {0} workers.".format(pool_count)
-    print "M: Converting {0} pages.".format(__pdf_filenames.qsize())
+    #print "M: Spinning up {0} workers.".format(pool_count)
+    #print "M: Converting {0} pages.".format(__pdf_filenames.qsize())
 
     pool = Pool()
     pool.map_async(
@@ -49,12 +49,12 @@ def convert_document(pdf_filename,
             tid in range(0, pool_count)],
     )
 
-    print "M: Waiting for pool to finish."
+    #print "M: Waiting for pool to finish."
 
     while __text_filenames.qsize() != len(filenames):
         time.sleep(1)
 
-    print "M: Building output text."
+    #print "M: Building output text."
 
     text_filenames = []
     try:
@@ -68,7 +68,7 @@ def convert_document(pdf_filename,
     if delete_files:
         cleanup_yapot(pdf_filename, text_filenames)
 
-    print "M: Done."
+    #print "M: Done."
 
     return text
 
@@ -76,12 +76,12 @@ def _yapot_worker(args):
 
     tid, pdf_filename, make_thumbs, thumb_size, resolution = args
 
-    print "{0}: Worker started.".format(tid)
+    #print "{0}: Worker started.".format(tid)
 
     while(1):
 
         if not __pdf_filenames.qsize():
-            print "{0}: No more work.".format(tid)
+            #print "{0}: No more work.".format(tid)
             break
 
         try:
@@ -89,13 +89,13 @@ def _yapot_worker(args):
         except Queue.Empty:
             break;
 
-        print "{0}: Working on: '{1}'".format(tid, filename)
+        #print "{0}: Working on: '{1}'".format(tid, filename)
 
         image_filename = '{0}.tiff'.format(filename)
 
         success = pdf_to_image(filename, image_filename, resolution)
 
-        print "{0}: Pdf to Image conversion complete.".format(tid)
+        #print "{0}: Pdf to Image conversion complete.".format(tid)
 
         if make_thumbs:
             thumbs_dir = '{0}_thumbs'.format(pdf_filename)
@@ -103,25 +103,27 @@ def _yapot_worker(args):
                 os.makedirs(thumbs_dir)
             thumb_filename = '{0}/{1}_thumb.png'.format(thumbs_dir, image_filename)
             succes = make_thumb(image_filename, thumb_filename, thumb_size)
-            print "{0}: Thumbnail created.".format(tid)
+            #print "{0}: Thumbnail created.".format(tid)
 
         try:
             text = image_ocr(image_filename)
-        except Exception, e:
-            print str(e)
-        print "{0}: Image OCR complete.".format(tid)
+        except Exception as e:
+            #print str(e)
+            pass
 
-        os.remove(filename)
-        os.remove(image_filename)
+        #print "{0}: Image OCR complete.".format(tid)
+
+        #  os.remove(filename)
+        #  os.remove(image_filename)
 
         text_filename = '{0}.txt'.format(image_filename)
         with open(text_filename,'w') as f:
             f.write(text)
 
-        print "{0}: OCR Text written to disk.".format(tid)
+        #print "{0}: OCR Text written to disk.".format(tid)
 
         __text_filenames.put(text_filename)
 
-        print "{0}: Done with conversion: '{1}'.".format(tid, filename)
+        #print "{0}: Done with conversion: '{1}'.".format(tid, filename)
 
-    print "{0}: Worker exiting.".format(tid)
+    # print "{0}: Worker exiting.".format(tid)

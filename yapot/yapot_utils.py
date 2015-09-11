@@ -3,26 +3,26 @@ import subprocess
 
 import shutil
 
-from pyPdf import PdfFileWriter
-from pyPdf import PdfFileReader
+#import PyPDF2 as pyPdf
+
+from PyPDF2 import PdfFileWriter
+from PyPDF2 import PdfFileReader
 
 def decrypt_pdf(pdf_filename, password):
 
     pdf_filename_unsecured = '{0}_unsecured.pdf'.format(pdf_filename)
 
     with open(os.devnull, 'w') as FNULL:
-        subprocess.call(
-            [
-                'qpdf',
-                '--password={0}'.format(password),
-                '--decrypt',
-                pdf_filename,
-                pdf_filename_unsecured,
-            ],
-            stdout=FNULL,
-            stderr=subprocess.STDOUT,
-        )
-
+        cmd = [
+            'qpdf',
+            '--password={0}'.format(password),
+            '--decrypt',
+            pdf_filename,
+            pdf_filename_unsecured,
+        ]
+        #stdout=FNULL,
+        #stderr=FNULL, #subprocess.STDOUT,
+        subprocess.call(cmd)
     return pdf_filename_unsecured
 
 def split_pdf(pdf_filename):
@@ -31,7 +31,7 @@ def split_pdf(pdf_filename):
     inputpdf = PdfFileReader(open(pdf_filename, "rb"))
     if inputpdf.getIsEncrypted():
         inputpdf.decrypt('')
-    for i in xrange(inputpdf.numPages):
+    for i in range(inputpdf.numPages):
         output = PdfFileWriter()
         output.addPage(inputpdf.getPage(i))
         directory = os.path.dirname(pdf_filename)
@@ -51,6 +51,8 @@ def pdf_to_image(pdf_filename, image_filename, resolution):
 
         cli = [
             'convert',
+            '-depth',
+            '8',
             '-density',
             '{0}'.format(resolution),
             '-threshold',
@@ -111,7 +113,7 @@ def pdf_to_image(pdf_filename, image_filename, resolution):
         #shutil.copyfile(image_filename, '{0}_inter.tiff'.format(image_filename))
         '''
 
-        print 'PDF converted.'
+        # print 'PDF converted.'
         
 
         '''
@@ -169,15 +171,16 @@ def image_ocr(filename):
     text = ''
     text_filename = '{0}.txt'.format(filename)
     with open(os.devnull, 'w') as FNULL:
-        subprocess.call(
-            [
-                'tesseract',
-                filename,
-                filename,
-                '-psm',
-                '6',
-            ],
-        )
+        cmd = [
+            'tesseract',
+            filename,
+            filename,
+            '-psm',
+            '6',
+        ]
+
+        #print ' '.join(cmd)
+        subprocess.call(cmd)
     with open(text_filename, 'r') as f:
         text = f.read()
 
@@ -205,6 +208,7 @@ def cleanup_yapot(pdf_filename, text_filenames):
         for filename in text_filenames:
             os.remove(filename)
         os.remove('{0}_unsecured.pdf'.format(pdf_filename))
-    except Exception, e:
-        print e
+    except Exception as e:
+        #print e
+        pass
 
