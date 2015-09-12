@@ -23,14 +23,17 @@ def convert_document(pdf_filename,
                      temp_dir=str(uuid.uuid4()),password='',
                      thumb_prefix='thumb_page_',
                      pool_count=2):
-    filename = decrypt_pdf(pdf_filename, temp_dir, password)
+    just_pdf_filename = os.path.basename(pdf_filename)
+    temp_pdf_filename = '{0}/{1}'.format(temp_dir, just_pdf_filename)
+    shutil.copyfile(pdf_filename, temp_pdf_filename)
+    filename = decrypt_pdf(temp_pdf_filename, temp_dir, password)
     filenames = split_pdf(filename, temp_dir)
     for filename in filenames:
         __pdf_filenames.put(filename)
     pool = Pool()
     pool.map_async(
         _yapot_worker,
-        [(tid, pdf_filename, temp_dir, resolution) for
+        [(tid, just_pdf_filename, temp_dir, resolution) for
             tid in range(0, pool_count)],
     )
     while __text_filenames.qsize() != len(filenames):
@@ -74,7 +77,9 @@ def decrypt_pdf(pdf_filename, temp_dir, password):
     '''
     Some PDFs are encrypted.  This decrypts it.
     '''
-    pdf_filename_unsecured = '{0}/{1}_unsecured.pdf'.format(temp_dir, pdf_filename)
+    pdf_filename_unsecured = '{0}_unsecured.pdf'.format(
+        pdf_filename
+    )
     with open(os.devnull, 'w') as FNULL:
         cli = [
             'qpdf',

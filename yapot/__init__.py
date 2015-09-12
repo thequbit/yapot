@@ -1,1 +1,1 @@
-from yapot import convert_document
+from .yapot import convert_document
