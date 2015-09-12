@@ -5,18 +5,15 @@ import time
 from multiprocessing import Queue
 from multiprocessing import Pool
 
-from yapot_utils import(
-    decrypt_pdf,
-    image_ocr,
-    make_thumb,
-    pdf_to_image,
-    split_pdf,
-    build_output_text,
-    cleanup_yapot,
-    )
+import os
+import subprocess
+import shutil
+from PyPDF2 import PdfFileWriter
+from PyPDF2 import PdfFileReader
 
 __pdf_filenames = Queue()
 __text_filenames = Queue()
+
 
 def convert_document(pdf_filename,
                      resolution=200,
@@ -24,106 +21,179 @@ def convert_document(pdf_filename,
                      page_delineation='\n--------\n',
                      verbose=False,
                      temp_dir=str(uuid.uuid4()),password='',
-                     make_thumbs=False,
-                     thumb_size=160,
-                     thumb_dir='thumbs',
                      thumb_prefix='thumb_page_',
-                     pool_count=1):
-
-    #print "M: Start."
-
-    filename = decrypt_pdf(pdf_filename, password)
-    
-    filenames = split_pdf(filename)
-
+                     pool_count=2):
+    filename = decrypt_pdf(pdf_filename, temp_dir, password)
+    filenames = split_pdf(filename, temp_dir)
     for filename in filenames:
         __pdf_filenames.put(filename)
-
-    #print "M: Spinning up {0} workers.".format(pool_count)
-    #print "M: Converting {0} pages.".format(__pdf_filenames.qsize())
-
     pool = Pool()
     pool.map_async(
         _yapot_worker,
-        [(tid, pdf_filename, make_thumbs, thumb_size, resolution) for \
+        [(tid, pdf_filename, temp_dir, resolution) for
             tid in range(0, pool_count)],
     )
-
-    #print "M: Waiting for pool to finish."
-
     while __text_filenames.qsize() != len(filenames):
         time.sleep(1)
-
-    #print "M: Building output text."
-
     text_filenames = []
     try:
         while(1):
             text_filenames.append(__text_filenames.get_nowait())
     except:
         pass
-
     text = build_output_text(text_filenames, page_delineation)
-
     if delete_files:
-        cleanup_yapot(pdf_filename, text_filenames)
-
-    #print "M: Done."
-
+        cleanup_yapot(temp_dir)
     return text
 
+
 def _yapot_worker(args):
-
-    tid, pdf_filename, make_thumbs, thumb_size, resolution = args
-
-    #print "{0}: Worker started.".format(tid)
-
+    tid, pdf_filename, temp_dir, resolution = args
     while(1):
-
         if not __pdf_filenames.qsize():
-            #print "{0}: No more work.".format(tid)
             break
-
         try:
             filename = __pdf_filenames.get_nowait()
-        except Queue.Empty:
+        except:
+            #  No more files in the queue
             break;
-
-        #print "{0}: Working on: '{1}'".format(tid, filename)
-
         image_filename = '{0}.tiff'.format(filename)
-
         success = pdf_to_image(filename, image_filename, resolution)
-
-        #print "{0}: Pdf to Image conversion complete.".format(tid)
-
-        if make_thumbs:
-            thumbs_dir = '{0}_thumbs'.format(pdf_filename)
-            if not os.path.exists(thumbs_dir):
-                os.makedirs(thumbs_dir)
-            thumb_filename = '{0}/{1}_thumb.png'.format(thumbs_dir, image_filename)
-            succes = make_thumb(image_filename, thumb_filename, thumb_size)
-            #print "{0}: Thumbnail created.".format(tid)
-
         try:
             text = image_ocr(image_filename)
         except Exception as e:
-            #print str(e)
+            #  TODO: Do something with this error ...
             pass
-
-        #print "{0}: Image OCR complete.".format(tid)
-
-        #  os.remove(filename)
-        #  os.remove(image_filename)
-
         text_filename = '{0}.txt'.format(image_filename)
         with open(text_filename,'w') as f:
             f.write(text)
-
-        #print "{0}: OCR Text written to disk.".format(tid)
-
         __text_filenames.put(text_filename)
 
-        #print "{0}: Done with conversion: '{1}'.".format(tid, filename)
 
-    # print "{0}: Worker exiting.".format(tid)
+def decrypt_pdf(pdf_filename, temp_dir, password):
+    '''
+    Some PDFs are encrypted.  This decrypts it.
+    '''
+    pdf_filename_unsecured = '{0}/{1}_unsecured.pdf'.format(temp_dir, pdf_filename)
+    with open(os.devnull, 'w') as FNULL:
+        cli = [
+            'qpdf',
+            '--password={0}'.format(password),
+            '--decrypt',
+            pdf_filename,
+            pdf_filename_unsecured,
+        ]
+        subprocess.call(cli)
+    return pdf_filename_unsecured
+
+
+def split_pdf(pdf_filename, temp_dir):
+    '''
+    Split the PDF into n PDFs ( one for each page ).
+    '''
+    filenames = []
+    inputpdf = PdfFileReader(open(pdf_filename, "rb"))
+    if inputpdf.getIsEncrypted():
+        inputpdf.decrypt('')
+    for i in range(inputpdf.numPages):
+        output = PdfFileWriter()
+        output.addPage(inputpdf.getPage(i))
+        filename = os.path.basename(pdf_filename)
+        filename = "{0}/{1}-p{2}.pdf".format(temp_dir, filename, i)
+        with open(filename, "wb") as outputStream:
+            output.write(outputStream)
+        filenames.append(filename)
+
+    return filenames
+
+
+def pdf_to_image(pdf_filename, image_filename, resolution):
+    '''
+    Converts a single PDF to a TIFF image.
+    '''
+    with open(os.devnull, 'w') as FNULL:
+        cli = [
+            'convert',
+            '-depth',
+            '8',
+            '-density',
+            '{0}'.format(resolution),
+            '-threshold',
+            '50%',
+            '{0}'.format(pdf_filename),
+            '-channel',
+            'r',
+            '-separate',
+            '{0}'.format(image_filename),
+        ]
+        print(' '.join(cli))
+        subprocess.call(cli)
+    return None
+
+
+def make_thumb(image_filename, thumb_filename, thumb_size):
+    '''
+    Makes a thumbnail from a larger image.
+    '''
+    with open(os.devnull, 'w') as FNULL:
+        cli = [
+            'convert',
+            '-resize',
+            '{0}x{0}'.format(thumb_size),
+            image_filename,
+            thumb_filename,
+        ]
+        print(' '.join(cli))
+        subprocess.call(cli)
+    return None
+
+
+def image_ocr(filename):
+    '''
+    Uses tesseract to OCR an image.
+    '''
+    text = ''
+    text_filename = '{0}.txt'.format(filename)
+    with open(os.devnull, 'w') as FNULL:
+        cli = [
+            'tesseract',
+            filename,
+            filename,
+            '-psm',
+            '6',
+        ]
+        print(' '.join(cli))
+        subprocess.call(cli)
+    with open(text_filename, 'r') as f:
+        text = f.read()
+    return text
+
+
+def build_output_text(filenames, page_delineation):
+    '''
+    Concatenate output text products into a single text blob.
+    '''
+    text = ''
+    ordered_filenames = []
+    for i in range(0,len(filenames)):
+        ordered_filenames.append('')
+    for filename in filenames:
+        index = int(filename.split('.pdf.tiff.txt')[0].split('-p')[-1])
+        ordered_filenames[index] = filename
+    for filename in ordered_filenames:
+        with open(filename) as f:
+            contents = f.read()
+        text += '{0}{1}'.format(contents, page_delineation)
+    return text
+
+
+def cleanup_yapot(output_dir):
+    '''
+    Clean up all the temp files that yapot makes.
+    '''
+    try:
+        shutil.rmtree(output_dir)
+    except Exception as e:
+        #  TODO: Do something with this error
+        pass
+
