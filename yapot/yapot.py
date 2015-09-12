@@ -126,7 +126,6 @@ def pdf_to_image(pdf_filename, image_filename, resolution):
             '-separate',
             '{0}'.format(image_filename),
         ]
-        print(' '.join(cli))
         subprocess.call(cli)
     return None
 
@@ -143,7 +142,6 @@ def make_thumb(image_filename, thumb_filename, thumb_size):
             image_filename,
             thumb_filename,
         ]
-        print(' '.join(cli))
         subprocess.call(cli)
     return None
 
@@ -162,7 +160,6 @@ def image_ocr(filename):
             '-psm',
             '6',
         ]
-        print(' '.join(cli))
         subprocess.call(cli)
     with open(text_filename, 'r') as f:
         text = f.read()
@@ -191,9 +188,5 @@ def cleanup_yapot(output_dir):
     '''
     Clean up all the temp files that yapot makes.
     '''
-    try:
-        shutil.rmtree(output_dir)
-    except Exception as e:
-        #  TODO: Do something with this error
-        pass
+    shutil.rmtree(output_dir)
 
